@@ -1,0 +1,193 @@
+-- ============================================================================
+-- Tiền Của Tôi Đâu — Database Schema (Supabase / PostgreSQL 15)
+-- ============================================================================
+-- File: supabase/schema.sql
+-- Chạy trong Supabase SQL Editor sau khi tạo project.
+-- (File này được lưu dạng .txt do giới hạn extension — đổi tên thành .sql khi dùng)
+-- ============================================================================
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- 1) profiles
+CREATE TABLE IF NOT EXISTS profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  full_name TEXT,
+  avatar_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users insert own profile" ON profiles FOR INSERT WITH CHECK (true);
+CREATE POLICY "Users update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
+
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, full_name) VALUES (NEW.id, NEW.raw_user_meta_data->>'full_name');
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+
+-- 2) categories
+CREATE TABLE IF NOT EXISTS categories (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  icon TEXT DEFAULT 'Tag',
+  color TEXT DEFAULT '#FFD100',
+  type TEXT NOT NULL DEFAULT 'expense' CHECK (type IN ('income','expense','both')),
+  is_default BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_categories_user ON categories(user_id);
+ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users own categories" ON categories
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+-- 3) wallets
+CREATE TABLE IF NOT EXISTS wallets (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  type TEXT DEFAULT 'cash',
+  icon TEXT DEFAULT 'Wallet',
+  color TEXT DEFAULT '#FFD100',
+  initial_balance NUMERIC(18,2) DEFAULT 0,
+  current_balance NUMERIC(18,2) DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_wallets_user ON wallets(user_id);
+ALTER TABLE wallets ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users own wallets" ON wallets
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+-- 4) transactions
+CREATE TABLE IF NOT EXISTS transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  wallet_id UUID REFERENCES wallets(id) ON DELETE SET NULL,
+  category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
+  amount NUMERIC(18,2) NOT NULL CHECK (amount > 0),
+  type TEXT NOT NULL CHECK (type IN ('income','expense')),
+  description TEXT,
+  merchant_name TEXT,
+  image_url TEXT,
+  transaction_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  ocr_confidence NUMERIC(5,2),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_tx_user ON transactions(user_id);
+CREATE INDEX idx_tx_date ON transactions(user_id, transaction_date DESC);
+ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users own transactions" ON transactions
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+-- Trigger auto-update wallet balance
+CREATE OR REPLACE FUNCTION update_wallet_balance()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.wallet_id IS NOT NULL THEN
+      UPDATE wallets SET current_balance = current_balance +
+        CASE WHEN NEW.type = 'income' THEN NEW.amount ELSE -NEW.amount END
+        WHERE id = NEW.wallet_id;
+    END IF;
+    RETURN NEW;
+  ELSIF TG_OP = 'DELETE' THEN
+    IF OLD.wallet_id IS NOT NULL THEN
+      UPDATE wallets SET current_balance = current_balance -
+        CASE WHEN OLD.type = 'income' THEN OLD.amount ELSE -OLD.amount END
+        WHERE id = OLD.wallet_id;
+    END IF;
+    RETURN OLD;
+  ELSIF TG_OP = 'UPDATE' THEN
+    IF OLD.wallet_id IS NOT NULL THEN
+      UPDATE wallets SET current_balance = current_balance -
+        CASE WHEN OLD.type = 'income' THEN OLD.amount ELSE -OLD.amount END
+        WHERE id = OLD.wallet_id;
+    END IF;
+    IF NEW.wallet_id IS NOT NULL THEN
+      UPDATE wallets SET current_balance = current_balance +
+        CASE WHEN NEW.type = 'income' THEN NEW.amount ELSE -NEW.amount END
+        WHERE id = NEW.wallet_id;
+    END IF;
+    NEW.updated_at = NOW();
+    RETURN NEW;
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER trg_update_wallet_balance
+  AFTER INSERT OR UPDATE OR DELETE ON transactions
+  FOR EACH ROW EXECUTE FUNCTION update_wallet_balance();
+
+-- 5) receipt_items
+CREATE TABLE IF NOT EXISTS receipt_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  transaction_id UUID NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+  name TEXT,
+  quantity NUMERIC(10,2) DEFAULT 1,
+  price NUMERIC(18,2) DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE receipt_items ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users view own receipt items" ON receipt_items FOR SELECT
+  USING (EXISTS (SELECT 1 FROM transactions WHERE transactions.id = receipt_items.transaction_id AND transactions.user_id = auth.uid()));
+CREATE POLICY "Users insert receipt items" ON receipt_items FOR INSERT
+  WITH CHECK (EXISTS (SELECT 1 FROM transactions WHERE transactions.id = receipt_items.transaction_id AND transactions.user_id = auth.uid()));
+
+-- 6) budgets
+CREATE TABLE IF NOT EXISTS budgets (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  category_id UUID REFERENCES categories(id) ON DELETE CASCADE,
+  month INT NOT NULL CHECK (month BETWEEN 1 AND 12),
+  year INT NOT NULL,
+  limit_amount NUMERIC(18,2) NOT NULL CHECK (limit_amount > 0),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (user_id, category_id, month, year)
+);
+CREATE INDEX idx_budgets_user ON budgets(user_id, year, month);
+ALTER TABLE budgets ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users own budgets" ON budgets
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+-- 7) saving_goals
+CREATE TABLE IF NOT EXISTS saving_goals (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  target_amount NUMERIC(18,2) NOT NULL CHECK (target_amount > 0),
+  current_amount NUMERIC(18,2) DEFAULT 0,
+  deadline DATE,
+  description TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE saving_goals ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users own saving goals" ON saving_goals
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+-- 8) ai_prompt_logs
+CREATE TABLE IF NOT EXISTS ai_prompt_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  feature TEXT,
+  prompt TEXT,
+  result_summary TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE ai_prompt_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users own AI logs" ON ai_prompt_logs
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+-- 9) Realtime publications
+ALTER PUBLICATION supabase_realtime ADD TABLE transactions;
+ALTER PUBLICATION supabase_realtime ADD TABLE wallets;
+ALTER PUBLICATION supabase_realtime ADD TABLE budgets;
+ALTER PUBLICATION supabase_realtime ADD TABLE saving_goals;

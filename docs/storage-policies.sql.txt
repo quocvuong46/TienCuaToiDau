@@ -1,0 +1,28 @@
+-- ============================================================================
+-- Supabase Storage RLS Policies
+-- File: supabase/storage-policies.sql
+-- Chạy SAU KHI tạo 2 bucket `receipts` và `avatars` (Private)
+-- ============================================================================
+
+-- Bucket: receipts
+CREATE POLICY "Receipt upload own folder" ON storage.objects FOR INSERT
+WITH CHECK (bucket_id = 'receipts' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+CREATE POLICY "Receipt read own folder" ON storage.objects FOR SELECT
+USING (bucket_id = 'receipts' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+CREATE POLICY "Receipt delete own folder" ON storage.objects FOR DELETE
+USING (bucket_id = 'receipts' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Bucket: avatars
+CREATE POLICY "Avatar upload own folder" ON storage.objects FOR INSERT
+WITH CHECK (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+CREATE POLICY "Avatar read own folder" ON storage.objects FOR SELECT
+USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+CREATE POLICY "Avatar update own folder" ON storage.objects FOR UPDATE
+USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+CREATE POLICY "Avatar delete own folder" ON storage.objects FOR DELETE
+USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
