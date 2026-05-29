@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import {
   Plus,
   Search,
@@ -402,35 +403,38 @@ export default function TransactionsPage() {
                   key={tx.id}
                   className="group flex items-center gap-3 px-5 py-4 transition-colors hover:bg-white/[0.02]"
                 >
-                  <div
-                    className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl"
-                    style={{
-                      backgroundColor: `${tx.category_color || "#FFD100"}25`,
-                      color: tx.category_color || "#FFD100",
-                    }}
+                  <Link
+                    href={`/transactions/${tx.id}`}
+                    className="flex flex-1 items-center gap-3 min-w-0 cursor-pointer"
                   >
-                    <Icon size={18} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="truncate text-sm font-medium text-white">
-                        {tx.merchant_name ||
-                          tx.description ||
-                          tx.category_name ||
-                          "Giao dịch"}
-                      </p>
-                      {tx.image_url && (
-                        <ImageIcon size={12} className="text-[#FFD100]/60" />
-                      )}
+                    <div
+                      className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl"
+                      style={{
+                        backgroundColor: `${tx.category_color || "#FFD100"}25`,
+                        color: tx.category_color || "#FFD100",
+                      }}
+                    >
+                      <Icon size={18} />
                     </div>
-                    <p className="truncate text-xs text-[#D6D6D6]/50">
-                      {tx.category_name || "Không phân loại"}
-                      {tx.wallet_name && ` • ${tx.wallet_name}`}
-                      {" • "}
-                      {formatDateVN(tx.transaction_date)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-sm font-medium text-white">
+                          {tx.merchant_name ||
+                            tx.description ||
+                            tx.category_name ||
+                            "Giao dịch"}
+                        </p>
+                        {tx.image_url && (
+                          <ImageIcon size={12} className="text-[#FFD100]/60" />
+                        )}
+                      </div>
+                      <p className="truncate text-xs text-[#D6D6D6]/50">
+                        {tx.category_name || "Không phân loại"}
+                        {tx.wallet_name && ` • ${tx.wallet_name}`}
+                        {" • "}
+                        {formatDateVN(tx.transaction_date)}
+                      </p>
+                    </div>
                     <span
                       className={`flex items-center gap-1 text-sm font-semibold ${
                         isIncome ? "text-[#FFEE32]" : "text-white"
@@ -444,7 +448,8 @@ export default function TransactionsPage() {
                       {isIncome ? "+" : "-"}
                       {formatVND(tx.amount)}
                     </span>
-                    <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                  </Link>
+                  <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
                       <button
                         onClick={() => {
                           setEditingTx(tx);
@@ -461,7 +466,6 @@ export default function TransactionsPage() {
                         <Trash2 size={14} />
                       </button>
                     </div>
-                  </div>
                 </div>
               );
             })}

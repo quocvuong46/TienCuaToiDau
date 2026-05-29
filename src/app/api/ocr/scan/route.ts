@@ -51,15 +51,22 @@ export async function POST(request: Request) {
       return Response.json({ error: "Thiếu ảnh hóa đơn" }, { status: 400 });
     }
 
-    // Build the user message — Gemini integration is text-based here so we describe with URL
-    const userPrompt = `Đây là URL ảnh hóa đơn: ${image_url}
-
-Hãy phân tích ảnh hóa đơn này dựa trên URL và bất kỳ ngữ cảnh nào bạn có thể suy ra (tên file, tên thư mục, các metadata trong URL). Nếu không thể xác định nội dung cụ thể từ URL, hãy tạo một kết quả mẫu hợp lý với confidence thấp (dưới 0.3) và đặt note giải thích rằng cần ảnh rõ hơn.
-
-Trả về DUY NHẤT JSON theo schema đã quy định. Ngày hôm nay: ${new Date().toISOString().slice(0, 10)}.`;
+    // Build the user message with image_url for multimodal vision models
+    const userMessageContent = [
+      {
+        type: "text",
+        text: `Hãy phân tích ảnh hóa đơn này dựa trên hình ảnh được cung cấp. Trả về DUY NHẤT một JSON hợp lệ theo đúng cấu trúc đã yêu cầu. Không thêm bất kỳ giải thích nào khác. Ngày hôm nay: ${new Date().toISOString().slice(0, 10)}.`
+      },
+      {
+        type: "image_url",
+        image_url: {
+          url: image_url
+        }
+      }
+    ];
 
     const opencodeApiKey = process.env.OPENCODE_API_KEY;
-    const opencodeModel = process.env.OPENCODE_MODEL || "deepseek-v4-flash-free";
+    const opencodeModel = process.env.OPENCODE_MODEL || "mimo-v2.5-free";
 
     if (!opencodeApiKey) {
       console.error("Missing process.env.OPENCODE_API_KEY");
@@ -79,7 +86,7 @@ Trả về DUY NHẤT JSON theo schema đã quy định. Ngày hôm nay: ${new D
         model: opencodeModel,
         messages: [
           { role: "system", content: OCR_SYSTEM_PROMPT },
-          { role: "user", content: userPrompt },
+          { role: "user", content: userMessageContent },
         ],
       }),
     });

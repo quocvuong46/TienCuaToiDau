@@ -34,9 +34,15 @@ export async function upload({ url, buffer, base64 }: UploadOptions) {
       throw new Error("No valid file data provided for upload");
     }
 
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error("User not authenticated");
+    }
+    const filePath = `${user.id}/${fileName}`;
+
     const { data, error } = await supabase.storage
       .from("receipts")
-      .upload(fileName, fileBuffer, {
+      .upload(filePath, fileBuffer, {
         contentType,
         upsert: true,
       });

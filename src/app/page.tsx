@@ -208,7 +208,7 @@ export default function LandingPage() {
             {
               icon: ScanLine,
               title: "OCR hóa đơn bằng AI",
-              desc: "Chụp hoặc tải ảnh hóa đơn, DeepSeek Flash tự nhận diện cửa hàng, số tiền, danh mục.",
+              desc: "Chụp hoặc tải ảnh hóa đơn, AI Multimodal Vision tự nhận diện cửa hàng, số tiền, danh mục.",
             },
             {
               icon: PiggyBank,
@@ -251,7 +251,7 @@ export default function LandingPage() {
           <div>
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#FFD100]/30 bg-[#FFD100]/5 px-3 py-1 text-xs font-medium text-[#FFD100]">
               <Zap size={12} />
-              OpenCode DeepSeek v4 Flash
+              AI Multimodal Vision (Mimo v2.5)
             </div>
             <h2 className="text-3xl font-bold sm:text-4xl text-white">
               Quét hóa đơn{" "}

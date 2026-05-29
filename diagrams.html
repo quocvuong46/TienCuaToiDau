@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sơ đồ báo cáo — Tiền Của Tôi Đâu</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    /* ── SCREEN STYLES ── */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #111;
+      font-family: 'Segoe UI', sans-serif;
+      color: #eee;
+      padding: 20px;
+    }
+
+    .top-bar {
+      position: sticky;
+      top: 0;
+      z-index: 999;
+      background: #1a1a1a;
+      border-bottom: 2px solid #FFD100;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: -20px -20px 30px -20px;
+    }
+
+    .top-bar h1 {
+      font-size: 16px;
+      color: #FFD100;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-print {
+      background: #FFD100;
+      color: #000;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-print:hover { background: #ffe84d; transform: translateY(-1px); }
+
+    /* A4 card on screen */
+    .diagram-page {
+      width: 794px;
+      min-height: 560px;
+      margin: 0 auto 40px;
+      background: #fff;
+      border-radius: 6px;
+      padding: 36px 40px 32px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+      page-break-after: always;
+      break-after: page;
+    }
+
+    .diagram-page:last-child { page-break-after: auto; break-after: auto; }
+
+    .page-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #888;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .diagram-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #1a1a2e;
+      border-bottom: 2px solid #FFD100;
+      padding-bottom: 8px;
+      margin-bottom: 20px;
+    }
+
+    .mermaid {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .mermaid svg {
+      max-width: 100%;
+      height: auto;
+    }
+
+    .diagram-caption {
+      text-align: center;
+      font-size: 11px;
+      color: #666;
+      margin-top: 14px;
+      font-style: italic;
+    }
+
+    /* ── PRINT STYLES ── */
+    @media print {
+      body {
+        background: #fff;
+        padding: 0;
+        color: #000;
+      }
+
+      .top-bar { display: none; }
+
+      .diagram-page {
+        width: 100%;
+        margin: 0;
+        border-radius: 0;
+        box-shadow: none;
+        padding: 18mm 18mm 14mm;
+        /* Each page = one A4 */
+        page-break-after: always;
+        break-after: page;
+        min-height: auto;
+      }
+
+      .diagram-page:last-child {
+        page-break-after: auto;
+        break-after: auto;
+      }
+
+      .page-label { color: #555; }
+      .diagram-title { color: #000; }
+      .diagram-caption { color: #444; }
+    }
+
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── TOP BAR ── -->
+<div class="top-bar">
+  <h1>📊 Sơ đồ báo cáo — Tiền Của Tôi Đâu</h1>
+  <button class="btn-print" onclick="window.print()">
+    🖨️ In / Lưu PDF (Ctrl+P)
+  </button>
+</div>
+
+<!-- ════════════════════════════════════════════
+     SƠ ĐỒ 1: KIẾN TRÚC HỆ THỐNG
+═════════════════════════════════════════════ -->
+<div class="diagram-page">
+  <div class="page-label">Sơ đồ 1 / 7 · Phần 3.1</div>
+  <div class="diagram-title">Kiến trúc Hệ thống Tổng quan</div>
+  <div class="mermaid">
+flowchart TB
+    subgraph CL["Người dùng"]
+        PC["💻 PC / Laptop"]
+        Phone["📱 Điện thoại"]
+    end
+
+    subgraph EC2["Máy chủ AWS EC2 · Debian 13 · 13.229.124.46"]
+        SSL["🔒 Let's Encrypt SSL/TLS · Certbot"]
+        Nginx["⚡ Nginx 1.26 · Reverse Proxy · Cổng 80 / 443"]
+        subgraph DK["Docker Container"]
+            NextJS["🟢 Next.js 14 Standalone\nApp Router + Route Handlers · Cổng 3000"]
+        end
+    end
+
+    subgraph SUP["Supabase BaaS · Singapore Region"]
+        direction LR
+        Auth["🔐 Auth\nArgon2 + JWT"]
+        DB["🗄️ PostgreSQL 15\nRLS + Triggers"]
+        Stor["📦 Storage\nReceipts / Avatars"]
+        RT["⚡ Realtime\nWebSocket"]
+    end
+
+    subgraph AI["OpenCode AI Gateway"]
+        Gemini["✨ Gemini 2.5 Flash\nVision LLM · OCR"]
+    end
+
+    PC & Phone -- "HTTPS :443" --> SSL
+    SSL --> Nginx
+    Nginx -- "HTTP nội bộ :3000" --> NextJS
+    NextJS -- "Supabase SDK" --> Auth & DB & Stor & RT
+    NextJS -- "HTTP API" --> Gemini
+  </div>
+  <div class="diagram-caption">Hình 3.1 — Kiến trúc tổng quan hệ thống "Tiền Của Tôi Đâu"</div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     SƠ ĐỒ 2: OCR PIPELINE
+═════════════════════════════════════════════ -->
+<div class="diagram-page">
+  <div class="page-label">Sơ đồ 2 / 7 · Phần 3.3</div>
+  <div class="diagram-title">Luồng Xử lý OCR Hóa đơn bằng AI (10 bước)</div>
+  <div class="mermaid">
+flowchart TD
+    A(["👤 Người dùng\nvào /ocr"]) --> B["Kéo thả / chọn\nảnh hóa đơn"]
+    B --> C["Upload lên Supabase Storage\nreceipts/user_id/timestamp.jpg"]
+    C --> D["Gọi POST /api/ocr/scan"]
+    D --> E["Route Handler tạo\nSigned URL · 5 phút"]
+    E --> F["Gửi đến Gemini Flash\nSigned URL + System Prompt"]
+    F --> G{{"Gemini phân tích\nảnh · 2–5 giây"}}
+    G -- "Thành công" --> H["Nhận JSON:\nmerchant, date, total,\nitems, category..."]
+    G -- "Ảnh mờ / lỗi" --> I["Fallback JSON\nconfidence thấp"]
+    H --> J["Strip markdown · JSON.parse\nĐối khớp danh mục"]
+    I --> J
+    J --> K["Log vào ai_prompt_logs"]
+    K --> L["Hiển thị Form điền sẵn\ncho người dùng REVIEW"]
+    L --> M{{"Người dùng\nkiểm tra?"}}
+    M -- "Chỉnh sửa" --> L
+    M -- "Xác nhận" --> N["POST /api/transactions"]
+    N --> O["Trigger PostgreSQL\ncập nhật số dư ví"]
+    O --> P(["✅ Dashboard cập nhật\nthời gian thực"])
+  </div>
+  <div class="diagram-caption">Hình 3.2 — Luồng xử lý OCR hóa đơn 10 bước tích hợp Gemini Flash</div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     SƠ ĐỒ 3: ERD
+═════════════════════════════════════════════ -->
+<div class="diagram-page">
+  <div class="page-label">Sơ đồ 3 / 7 · Phần 4.1</div>
+  <div class="diagram-title">Sơ đồ Thực thể Liên kết (ERD) — Cơ sở dữ liệu</div>
+  <div class="mermaid">
+erDiagram
+    AUTH_USERS {
+        uuid id PK
+        string email
+        string encrypted_password
+    }
+    PROFILES {
+        uuid id PK
+        string full_name
+        string avatar_url
+    }
+    WALLETS {
+        uuid id PK
+        uuid user_id FK
+        string name
+        string type
+        numeric initial_balance
+        numeric current_balance
+    }
+    CATEGORIES {
+        uuid id PK
+        uuid user_id FK
+        string name
+        string type
+        boolean is_default
+    }
+    TRANSACTIONS {
+        uuid id PK
+        uuid user_id FK
+        uuid wallet_id FK
+        uuid category_id FK
+        numeric amount
+        string type
+        date transaction_date
+        numeric ocr_confidence
+    }
+    RECEIPT_ITEMS {
+        uuid id PK
+        uuid transaction_id FK
+        string name
+        numeric quantity
+        numeric price
+    }
+    BUDGETS {
+        uuid id PK
+        uuid user_id FK
+        uuid category_id FK
+        int month
+        int year
+        numeric limit_amount
+    }
+    SAVING_GOALS {
+        uuid id PK
+        uuid user_id FK
+        string name
+        numeric target_amount
+        numeric current_amount
+        date deadline
+    }
+    AI_PROMPT_LOGS {
+        uuid id PK
+        uuid user_id FK
+        string feature
+        text result_summary
+    }
+
+    AUTH_USERS ||--|| PROFILES : "trigger tự động"
+    AUTH_USERS ||--o{ WALLETS : "sở hữu"
+    AUTH_USERS ||--o{ CATEGORIES : "tạo"
+    AUTH_USERS ||--o{ TRANSACTIONS : "thực hiện"
+    AUTH_USERS ||--o{ BUDGETS : "lập"
+    AUTH_USERS ||--o{ SAVING_GOALS : "đặt"
+    AUTH_USERS ||--o{ AI_PROMPT_LOGS : "log"
+    WALLETS ||--o{ TRANSACTIONS : "chứa"
+    CATEGORIES ||--o{ TRANSACTIONS : "phân loại"
+    CATEGORIES ||--o{ BUDGETS : "áp dụng"
+    TRANSACTIONS ||--o{ RECEIPT_ITEMS : "chi tiết"
+  </div>
+  <div class="diagram-caption">Hình 4.1 — ERD cơ sở dữ liệu với 9 bảng và các ràng buộc khoá ngoại</div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     SƠ ĐỒ 4: USE CASE
+═════════════════════════════════════════════ -->
+<div class="diagram-page">
+  <div class="page-label">Sơ đồ 4 / 7 · Phần 5.1</div>
+  <div class="diagram-title">Sơ đồ Use Case Tổng quát</div>
+  <div class="mermaid">
+flowchart LR
+    Actor(["🧑‍💻 Người Dùng"])
+
+    subgraph SYS["Hệ thống Tiền Của Tôi Đâu"]
+        direction TB
+        UC1["📝 Đăng ký / Đăng nhập"]
+        UC2["📊 Xem Dashboard tổng quan"]
+        UC3["💸 Thêm / Sửa / Xóa Giao dịch"]
+        UC4["🤖 Quét Hóa đơn bằng AI"]
+        UC5["💳 Quản lý Ví tiền"]
+        UC6["🏷️ Quản lý Danh mục chi tiêu"]
+        UC7["📅 Lập Ngân sách tháng"]
+        UC8["🎯 Đặt Mục tiêu Tiết kiệm"]
+        UC9["📈 Xem Báo cáo & Biểu đồ"]
+        UC10["📤 Export CSV / In PDF"]
+        UC11["👤 Cập nhật Hồ sơ cá nhân"]
+    end
+
+    Actor --> UC1
+    Actor --> UC2
+    Actor --> UC3
+    Actor --> UC4
+    Actor --> UC5
+    Actor --> UC6
+    Actor --> UC7
+    Actor --> UC8
+    Actor --> UC9
+    Actor --> UC10
+    Actor --> UC11
+
+    UC4 -. "extends" .-> UC3
+    UC10 -. "includes" .-> UC9
+  </div>
+  <div class="diagram-caption">Hình 5.1 — Sơ đồ Use Case với 11 chức năng chính của hệ thống</div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     SƠ ĐỒ 5: LUỒNG XÁC THỰC
+═════════════════════════════════════════════ -->
+<div class="diagram-page">
+  <div class="page-label">Sơ đồ 5 / 7 · Phần 3.2</div>
+  <div class="diagram-title">Luồng Xác thực Người dùng (Authentication Flow)</div>
+  <div class="mermaid">
+sequenceDiagram
+    actor U as 👤 Người dùng
+    participant B as 🖥️ Trình duyệt
+    participant MW as ⚡ Next.js Middleware
+    participant SA as 🔐 Supabase Auth
+    participant DB as 🗄️ PostgreSQL + RLS
+
+    U->>B: Nhập email + mật khẩu
+    B->>SA: POST /auth/v1/token
+    SA->>SA: Argon2 verify password hash
+    SA-->>B: Access Token JWT (1h) + Refresh Token
+    B->>B: Lưu vào HttpOnly Cookie
+
+    Note over B,DB: Các lần truy cập tiếp theo
+
+    U->>B: Truy cập /dashboard
+    B->>MW: Request kèm Cookie JWT
+    MW->>SA: Verify JWT signature
+    SA-->>MW: Hợp lệ → user_id = UUID
+    MW-->>B: Cho phép render trang
+
+    B->>DB: Truy vấn dữ liệu (có JWT)
+    DB->>DB: RLS: auth.uid() = user_id ✅
+    DB-->>B: Chỉ trả data của user hiện tại
+
+    Note over B,DB: Khi JWT hết hạn
+
+    B->>SA: Gửi Refresh Token
+    SA-->>B: Cấp Access Token mới
+  </div>
+  <div class="diagram-caption">Hình 3.3 — Luồng xác thực JWT với HttpOnly Cookie và Row Level Security</div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     SƠ ĐỒ 6: GIAO DỊCH & TRIGGER
+═════════════════════════════════════════════ -->
+<div class="diagram-page">
+  <div class="page-label">Sơ đồ 6 / 7 · Phần 4.3</div>
+  <div class="diagram-title">Luồng Ghi Giao dịch và Trigger Cập nhật Số dư Ví</div>
+  <div class="mermaid">
+sequenceDiagram
+    actor U as 👤 Người dùng
+    participant F as 📝 Form
+    participant API as ⚡ /api/transactions
+    participant DB as 🗄️ PostgreSQL
+    participant TR as 🔄 Trigger
+    participant RT as 📡 Realtime
+    participant UI as 📊 Dashboard
+
+    U->>F: Điền thông tin giao dịch
+    F->>F: Zod validation (client)
+    F->>API: POST body JSON
+    API->>API: Xác minh JWT → user_id
+    API->>DB: Kiểm tra wallet thuộc user
+    DB-->>API: OK (chống IDOR)
+    API->>DB: INSERT INTO transactions
+    DB->>TR: AFTER INSERT FIRES
+    TR->>DB: UPDATE wallets.current_balance
+    Note over TR,DB: +amount nếu income<br/>−amount nếu expense
+    DB-->>API: 201 Created
+    API-->>F: Thành công ✅
+    DB->>RT: Publish WebSocket event
+    RT->>UI: Push event → Refresh
+    UI-->>U: Số dư & biểu đồ cập nhật
+  </div>
+  <div class="diagram-caption">Hình 4.2 — Trigger PostgreSQL tự động đồng bộ số dư ví sau mỗi giao dịch</div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     SƠ ĐỒ 7: DOCKER BUILD PIPELINE
+═════════════════════════════════════════════ -->
+<div class="diagram-page">
+  <div class="page-label">Sơ đồ 7 / 7 · Phần 7.1</div>
+  <div class="diagram-title">Docker Multi-stage Build Pipeline — Triển khai Production</div>
+  <div class="mermaid">
+flowchart LR
+    subgraph SRC["💻 Source Code"]
+        Code["📁 .ts .tsx .css\npackage.json"]
+    end
+
+    subgraph BUILD["🐳 Docker Build"]
+        S1["Stage 1: deps\nnode:20-alpine\nnpm ci\n→ node_modules/"]
+        S2["Stage 2: builder\nInject NEXT_PUBLIC_*\nnpm run build\n→ .next/standalone/"]
+        S3["Stage 3: runner ✅\nnode:20-alpine\nUser: nextjs non-root\nEXPOSE 3000\n\n📦 ~180 MB"]
+    end
+
+    subgraph EC2["☁️ AWS EC2"]
+        CTR["🟢 Docker Container\ntien-cua-toi-dau\nPort 3000"]
+        NGX["⚡ Nginx\nPort 443 → :3000"]
+        WEB(["🌐 quocvuong.tech\nHTTPS ✅"])
+    end
+
+    Code --> S1
+    S1 -- "COPY node_modules" --> S2
+    S2 -- "COPY standalone\nartifacts" --> S3
+    S3 -- "docker load / push" --> CTR
+    CTR --> NGX
+    NGX --> WEB
+  </div>
+  <div class="diagram-caption">Hình 7.1 — Docker Multi-stage Build: 3 giai đoạn, image cuối ~180MB, chạy với user non-root</div>
+</div>
+
+<!-- ── SCRIPT ── -->
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'default',
+    themeVariables: {
+      primaryColor:       '#1a3a5c',
+      primaryTextColor:   '#ffffff',
+      primaryBorderColor: '#0f4c75',
+      lineColor:          '#FFD100',
+      secondaryColor:     '#2d4a2d',
+      tertiaryColor:      '#f5f5f5',
+      fontSize:           '13px',
+    },
+    flowchart: { curve: 'basis', padding: 18, nodeSpacing: 40, rankSpacing: 50 },
+    er:        { diagramPadding: 20, layoutDirection: 'TB', minEntityWidth: 100 },
+    sequence:  { actorMargin: 60, width: 140, height: 50, messageMargin: 35 },
+  });
+</script>
+</body>
+</html>

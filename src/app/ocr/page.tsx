@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import {
   ScanLine,
@@ -57,6 +57,13 @@ export default function OCRPage() {
       return res.json();
     },
   });
+
+  // Auto-select first wallet if none selected
+  useEffect(() => {
+    if (!walletId && walletsData?.wallets && walletsData.wallets.length > 0) {
+      setWalletId(String(walletsData.wallets[0].id));
+    }
+  }, [walletsData, walletId]);
 
   const handleFile = async (file: File | undefined) => {
     if (!file) return;
@@ -141,6 +148,22 @@ export default function OCRPage() {
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const handleSave = () => {
+    if (!walletId) {
+      toast.error("Vui lòng chọn ví/tài khoản");
+      return;
+    }
+    if (!categoryId) {
+      toast.error("Vui lòng chọn danh mục");
+      return;
+    }
+    if (!totalAmount || Number(totalAmount) <= 0) {
+      toast.error("Số tiền không hợp lệ");
+      return;
+    }
+    saveMutation.mutate();
+  };
 
   const resetAll = () => {
     setImageUrl("");
@@ -425,7 +448,7 @@ export default function OCRPage() {
                   Hủy
                 </Button>
                 <Button
-                  onClick={() => saveMutation.mutate()}
+                  onClick={handleSave}
                   loading={saveMutation.isPending}
                   className="flex-1"
                 >

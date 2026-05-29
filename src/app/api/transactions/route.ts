@@ -107,11 +107,16 @@ export async function POST(request: Request) {
     const amt = Number(amount);
     const txDate = transaction_date || new Date().toISOString().slice(0, 10);
 
-    if (wallet_id) {
-      const w = await sql`SELECT id FROM wallets WHERE id = ${wallet_id} AND user_id = ${userId}`;
-      if (w.length === 0) {
-        return Response.json({ error: "Ví không hợp lệ" }, { status: 400 });
-      }
+    if (!wallet_id) {
+      return Response.json(
+        { error: "Vui lòng chọn ví/tài khoản cho giao dịch" },
+        { status: 400 },
+      );
+    }
+
+    const w = await sql`SELECT id FROM wallets WHERE id = ${wallet_id} AND user_id = ${userId}`;
+    if (w.length === 0) {
+      return Response.json({ error: "Ví không hợp lệ" }, { status: 400 });
     }
     if (category_id) {
       const c = await sql`SELECT id FROM categories WHERE id = ${category_id} AND user_id = ${userId}`;

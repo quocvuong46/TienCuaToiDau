@@ -21,13 +21,14 @@ export function useUpload(): [
     async (input: UploadInput): Promise<UploadResult> => {
       try {
         setLoading(true);
-        if (!input.file) {
-          throw new Error("No file selected for upload");
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          throw new Error("Người dùng chưa đăng nhập hoặc phiên làm việc đã hết hạn");
         }
 
         const fileExt = input.file.name.split(".").pop();
         const fileName = `receipt-${Date.now()}.${fileExt}`;
-        const filePath = `${fileName}`;
+        const filePath = `${user.id}/${fileName}`;
 
         const { data, error: uploadError } = await supabase.storage
           .from("receipts")
